@@ -1,0 +1,11 @@
+{
+  "name": "plant-system-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dashboard skeleton for plant monitoring system",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  }
+}

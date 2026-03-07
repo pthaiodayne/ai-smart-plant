@@ -1,0 +1,7 @@
+# TODO: add dependencies after the framework/model stack is finalized
+# example:
+# fastapi
+# uvicorn
+# torch
+# torchvision
+# pillow

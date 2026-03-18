@@ -1,11 +1,11 @@
-/**
- * Dashboard entry stub.
- * TODO:
- * - Render the React app after setting up Vite/React
- * - Configure routing if multiple pages are needed
- */
-
+import React from "react";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 import "./styles/app.css";
 import { App } from "./App";
 
-App();
+createRoot(document.getElementById("root")).render(
+	<StrictMode>
+		<App />
+	</StrictMode>
+);

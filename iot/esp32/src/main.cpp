@@ -50,7 +50,7 @@ void sendSensorData(float temp, float hum, int light)
 
     HTTPClient http;
 
-    String url = String(API_BASE_URL) + "/sensor-data";
+    String url = String(API_BASE_URL) + "/api/sensor-data";
 
     http.begin(url);
     http.addHeader("Content-Type", "application/json");
@@ -143,7 +143,7 @@ void loop()
         Serial.println("----- SENSOR DATA -----");
         Serial.println("Temp: " + String(temperature));
         Serial.println("Humidity: " + String(humidity));
-        Serial.println("Light: " + String(light));  
+        Serial.println("Light: " + String(light));
 
         sendSensorData(temperature, humidity, light);
 

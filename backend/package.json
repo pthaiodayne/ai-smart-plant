@@ -2,10 +2,17 @@
   "name": "plant-system-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "Backend skeleton for plant monitoring system",
+  "description": "Backend for plant monitoring system",
   "main": "src/server.js",
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "sqlite3": "^5.1.6",
+    "morgan": "^1.10.0"
   }
 }

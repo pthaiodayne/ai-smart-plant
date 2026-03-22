@@ -15,24 +15,18 @@ const plants = [
     "sweetpotato", "tomato", "turnip", "watermelon"
 ];
 
-// Ngưỡng khuyến nghị cho từng loại (có thể điều chỉnh)
 const getPlantThresholds = (plant) => {
     const thresholds = {
-        // Rau ăn lá
         'lettuce': { temp_min: 15, temp_max: 22, hum_min: 60, hum_max: 80, light_min: 2000, light_max: 4000 },
         'spinach': { temp_min: 10, temp_max: 20, hum_min: 65, hum_max: 85, light_min: 3000, light_max: 5000 },
         'cabbage': { temp_min: 12, temp_max: 22, hum_min: 70, hum_max: 90, light_min: 3000, light_max: 5000 },
         'cauliflower': { temp_min: 15, temp_max: 22, hum_min: 65, hum_max: 85, light_min: 4000, light_max: 6000 },
-
-        // Rau củ
         'carrot': { temp_min: 15, temp_max: 25, hum_min: 60, hum_max: 80, light_min: 4000, light_max: 7000 },
         'potato': { temp_min: 15, temp_max: 22, hum_min: 65, hum_max: 85, light_min: 3000, light_max: 5000 },
         'sweetpotato': { temp_min: 20, temp_max: 30, hum_min: 60, hum_max: 80, light_min: 5000, light_max: 8000 },
         'raddish': { temp_min: 10, temp_max: 20, hum_min: 60, hum_max: 80, light_min: 3000, light_max: 5000 },
         'turnip': { temp_min: 10, temp_max: 20, hum_min: 60, hum_max: 80, light_min: 3000, light_max: 5000 },
         'beetroot': { temp_min: 12, temp_max: 22, hum_min: 60, hum_max: 80, light_min: 4000, light_max: 6000 },
-
-        // Quả
         'tomato': { temp_min: 20, temp_max: 28, hum_min: 65, hum_max: 85, light_min: 4000, light_max: 8000 },
         'cucumber': { temp_min: 18, temp_max: 28, hum_min: 70, hum_max: 90, light_min: 5000, light_max: 8000 },
         'eggplant': { temp_min: 20, temp_max: 28, hum_min: 65, hum_max: 85, light_min: 5000, light_max: 8000 },
@@ -42,12 +36,8 @@ const getPlantThresholds = (plant) => {
         'jalepeno': { temp_min: 20, temp_max: 30, hum_min: 60, hum_max: 80, light_min: 6000, light_max: 9000 },
         'corn': { temp_min: 18, temp_max: 28, hum_min: 65, hum_max: 85, light_min: 5000, light_max: 8000 },
         'sweetcorn': { temp_min: 18, temp_max: 28, hum_min: 65, hum_max: 85, light_min: 5000, light_max: 8000 },
-
-        // Đậu
         'peas': { temp_min: 12, temp_max: 22, hum_min: 60, hum_max: 80, light_min: 4000, light_max: 6000 },
         'soy beans': { temp_min: 20, temp_max: 30, hum_min: 65, hum_max: 85, light_min: 5000, light_max: 8000 },
-
-        // Trái cây
         'apple': { temp_min: 10, temp_max: 22, hum_min: 60, hum_max: 80, light_min: 5000, light_max: 8000 },
         'banana': { temp_min: 20, temp_max: 30, hum_min: 70, hum_max: 90, light_min: 6000, light_max: 10000 },
         'mango': { temp_min: 22, temp_max: 32, hum_min: 60, hum_max: 80, light_min: 7000, light_max: 10000 },
@@ -59,15 +49,12 @@ const getPlantThresholds = (plant) => {
         'pineapple': { temp_min: 20, temp_max: 32, hum_min: 65, hum_max: 85, light_min: 7000, light_max: 10000 },
         'pomegranate': { temp_min: 15, temp_max: 28, hum_min: 55, hum_max: 75, light_min: 6000, light_max: 9000 },
         'watermelon': { temp_min: 22, temp_max: 32, hum_min: 65, hum_max: 85, light_min: 7000, light_max: 10000 },
-
-        // Rau gia vị
         'garlic': { temp_min: 10, temp_max: 25, hum_min: 55, hum_max: 75, light_min: 4000, light_max: 7000 },
         'ginger': { temp_min: 20, temp_max: 30, hum_min: 70, hum_max: 90, light_min: 3000, light_max: 5000 },
         'onion': { temp_min: 12, temp_max: 24, hum_min: 55, hum_max: 75, light_min: 5000, light_max: 8000 },
         'paprika': { temp_min: 18, temp_max: 28, hum_min: 60, hum_max: 80, light_min: 5000, light_max: 8000 }
     };
 
-    // Nếu không có ngưỡng cụ thể, dùng ngưỡng mặc định
     return thresholds[plant] || {
         temp_min: 18, temp_max: 26,
         hum_min: 60, hum_max: 80,
@@ -76,9 +63,6 @@ const getPlantThresholds = (plant) => {
 };
 
 db.serialize(() => {
-    // Xóa dữ liệu cũ nếu muốn (tùy chọn)
-    // db.run("DELETE FROM plant_profiles");
-
     const stmt = db.prepare(`INSERT OR REPLACE INTO plant_profiles 
         (plant, temperature_min, temperature_max, humidity_min, humidity_max, light_min, light_max) 
         VALUES (?, ?, ?, ?, ?, ?, ?)`);
@@ -103,7 +87,6 @@ db.serialize(() => {
                 if (count === plants.length) {
                     console.log(`✅ Successfully inserted/updated ${count} plant profiles`);
 
-                    // Kiểm tra kết quả
                     db.get("SELECT COUNT(*) as total FROM plant_profiles", [], (err, row) => {
                         console.log(`📊 Total plant profiles in database: ${row.total}`);
                         db.close();

@@ -3,7 +3,6 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 require('dotenv').config();
 
-// Lấy đường dẫn từ .env hoặc dùng mặc định
 const dbPath = process.env.DB_PATH || path.join(__dirname, '../../database.sqlite');
 
 const db = new sqlite3.Database(dbPath, (err) => {

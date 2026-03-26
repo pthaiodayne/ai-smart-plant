@@ -2,81 +2,21 @@
   {
     "plant_type": "cabbage",
     "confidence": 0.9798,
-    "timestamp": "2026-03-22T09:34:17.363141+00:00"
+    "timestamp": "2026-03-26T08:58:13.342378+00:00"
+  },
+  {
+    "plant_type": "lettuce",
+    "confidence": 0.6551,
+    "timestamp": "2026-03-26T09:30:47.467735+00:00"
+  },
+  {
+    "plant_type": "lettuce",
+    "confidence": 0.6551,
+    "timestamp": "2026-03-26T09:31:55.554149+00:00"
   },
   {
     "plant_type": "tomato",
     "confidence": 0.9779,
-    "timestamp": "2026-03-22T09:35:42.281997+00:00"
-  },
-  {
-    "plant_type": "lettuce",
-    "confidence": 0.6551,
-    "timestamp": "2026-03-22T09:36:22.392864+00:00"
-  },
-  {
-    "plant_type": "raddish",
-    "confidence": 0.5179,
-    "timestamp": "2026-03-22T09:40:34.666613+00:00"
-  },
-  {
-    "plant_type": "cabbage",
-    "confidence": 0.9798,
-    "timestamp": "2026-03-22T09:41:05.001592+00:00"
-  },
-  {
-    "plant_type": "lettuce",
-    "confidence": 0.9156,
-    "timestamp": "2026-03-22T09:41:24.092597+00:00"
-  },
-  {
-    "plant_type": "lettuce",
-    "confidence": 0.5983,
-    "timestamp": "2026-03-22T09:47:09.763033+00:00"
-  },
-  {
-    "plant_type": "lettuce",
-    "confidence": 0.6551,
-    "timestamp": "2026-03-22T09:47:30.031681+00:00"
-  },
-  {
-    "plant_type": "cabbage",
-    "confidence": 0.9798,
-    "timestamp": "2026-03-22T09:47:39.493326+00:00"
-  },
-  {
-    "plant_type": "cabbage",
-    "confidence": 0.9798,
-    "timestamp": "2026-03-22T09:48:34.420824+00:00"
-  },
-  {
-    "plant_type": "lettuce",
-    "confidence": 0.6551,
-    "timestamp": "2026-03-22T09:48:39.725902+00:00"
-  },
-  {
-    "plant_type": "raddish",
-    "confidence": 0.5179,
-    "timestamp": "2026-03-22T09:54:07.493608+00:00"
-  },
-  {
-    "plant_type": "tomato",
-    "confidence": 0.9779,
-    "timestamp": "2026-03-22T10:02:31.343188+00:00"
-  },
-  {
-    "plant_type": "cabbage",
-    "confidence": 0.9798,
-    "timestamp": "2026-03-22T10:02:54.265466+00:00"
-  },
-  {
-    "plant_type": "lettuce",
-    "confidence": 0.9156,
-    "timestamp": "2026-03-22T10:03:17.727196+00:00"
-  },
-  {
-    "plant_type": "lettuce",
-    "confidence": 0.6551,
-    "timestamp": "2026-03-22T10:04:01.173584+00:00"
+    "timestamp": "2026-03-26T09:32:00.868968+00:00"
   }
 ]

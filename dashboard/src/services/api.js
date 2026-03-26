@@ -1,29 +1,37 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
-const MOCK_SENSOR_HISTORY = [
-	{ timestamp: "2026-03-18T07:00:00Z", temperature: 29.2, humidity: 58.1, soil_moisture: 42 },
-	{ timestamp: "2026-03-18T07:20:00Z", temperature: 29.6, humidity: 56.4, soil_moisture: 40 },
-	{ timestamp: "2026-03-18T07:40:00Z", temperature: 30.1, humidity: 55.3, soil_moisture: 38 },
-	{ timestamp: "2026-03-18T08:00:00Z", temperature: 30.4, humidity: 54.6, soil_moisture: 36 },
-	{ timestamp: "2026-03-18T08:20:00Z", temperature: 30.9, humidity: 53.8, soil_moisture: 34 },
-	{ timestamp: "2026-03-18T08:40:00Z", temperature: 31.2, humidity: 53.0, soil_moisture: 33 },
-];
+function normalizeUtcTimestamp(value) {
+	if (!value) return new Date().toISOString();
+	if (value instanceof Date) return value.toISOString();
 
-const MOCK_AI_HISTORY = [
-	{ plant_type: "lettuce", confidence: 0.93, timestamp: "2026-03-18T08:45:00Z" },
-	{ plant_type: "lettuce", confidence: 0.89, timestamp: "2026-03-18T08:15:00Z" },
-];
+	const str = String(value).trim();
+	if (!str) return new Date().toISOString();
 
-const MOCK_PLANT_DB = {
-	lettuce: { humidity: { min: 60, max: 75 }, temperature: { min: 18, max: 26 }, soil_moisture: { min: 45, max: 65 } },
-	"mustard-greens": { humidity: { min: 55, max: 70 }, temperature: { min: 20, max: 28 }, soil_moisture: { min: 40, max: 60 } },
-	"water-spinach": { humidity: { min: 65, max: 85 }, temperature: { min: 22, max: 32 }, soil_moisture: { min: 60, max: 80 } },
-};
+	// SQLite thường trả kiểu "YYYY-MM-DD HH:mm:ss" (không timezone), ta coi đây là UTC.
+	if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(str)) {
+		return str.replace(" ", "T") + "Z";
+	}
+
+	// Nếu đã có timezone hoặc định dạng ISO thì giữ nguyên theo Date parser.
+	const parsed = new Date(str);
+	if (!Number.isNaN(parsed.getTime())) {
+		return parsed.toISOString();
+	}
+
+	return new Date().toISOString();
+}
 
 async function requestJson(path, options = {}) {
 	const res = await fetch(`${API_BASE_URL}${path}`, options);
 	if (!res.ok) {
-		throw new Error(`Request failed: ${res.status}`);
+		let detail = "";
+		try {
+			const body = await res.json();
+			detail = body?.error || body?.message || JSON.stringify(body);
+		} catch {
+			detail = await res.text();
+		}
+		throw new Error(detail ? `Request failed: ${res.status} - ${detail}` : `Request failed: ${res.status}`);
 	}
 	return res.json();
 }
@@ -32,105 +40,93 @@ function normalizeSensor(raw = {}) {
 	return {
 		temperature: Number(raw.temperature ?? raw.temp ?? 0),
 		humidity: Number(raw.humidity ?? 0),
-		soil_moisture: Number(raw.soil_moisture ?? raw.soilMoisture ?? 0),
-		timestamp: raw.timestamp || new Date().toISOString(),
+		// Backend hiện lưu trường `light`; tạm ánh xạ để giữ luồng hiển thị hiện tại của dashboard.
+		soil_moisture: Number(raw.soil_moisture ?? raw.soilMoisture ?? raw.light ?? 0),
+		timestamp: normalizeUtcTimestamp(raw.timestamp),
 		device_id: raw.device_id || raw.deviceId || "esp32_01",
 	};
 }
 
+function normalizePlantProfile(raw = {}) {
+	const tempMin = Number(raw.temperature_min);
+	const tempMax = Number(raw.temperature_max);
+	const humidityMin = Number(raw.humidity_min);
+	const humidityMax = Number(raw.humidity_max);
+	const lightMin = Number(raw.light_min);
+	const lightMax = Number(raw.light_max);
+
+	return {
+		plant: raw.plant,
+		target: {
+			temperature: { min: Number.isFinite(tempMin) ? tempMin : 0, max: Number.isFinite(tempMax) ? tempMax : 0 },
+			humidity: { min: Number.isFinite(humidityMin) ? humidityMin : 0, max: Number.isFinite(humidityMax) ? humidityMax : 0 },
+			// Dashboard hiện dùng soil_moisture để so sánh; backend đang có light range.
+			soil_moisture: { min: Number.isFinite(lightMin) ? lightMin : 0, max: Number.isFinite(lightMax) ? lightMax : 0 },
+		},
+	};
+}
+
 export async function getSensorLatest() {
-	try {
-		const data = await requestJson("/sensor/latest");
-		return normalizeSensor(data?.data || data);
-	} catch {
-		return normalizeSensor(MOCK_SENSOR_HISTORY[MOCK_SENSOR_HISTORY.length - 1]);
-	}
+	const data = await requestJson("/sensor/latest");
+	return normalizeSensor(data?.data || data);
 }
 
 export async function getSensorHistory() {
-	try {
-		const data = await requestJson("/sensor/history");
-		const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-		if (!items.length) {
-			return MOCK_SENSOR_HISTORY;
-		}
-		return items.map(normalizeSensor);
-	} catch {
-		return MOCK_SENSOR_HISTORY;
-	}
+	const data = await requestJson("/sensor/history?limit=20");
+	const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+	return items.map(normalizeSensor);
 }
 
 export async function getAiHistory() {
-	try {
-		const data = await requestJson("/ai/history");
-		const items = Array.isArray(data?.items) ? data.items : Array.isArray(data?.data) ? data.data : [];
-		return items.length ? items : MOCK_AI_HISTORY;
-	} catch {
-		return MOCK_AI_HISTORY;
-	}
+	const data = await requestJson("/ai/history?limit=20");
+	const items = Array.isArray(data?.items) ? data.items : Array.isArray(data?.data) ? data.data : [];
+	return items.map((item) => ({
+		...item,
+		timestamp: normalizeUtcTimestamp(item.timestamp),
+	}));
 }
 
 export async function predictPlant(file) {
 	const formData = new FormData();
 	formData.append("file", file);
 
-	try {
-		return await requestJson("/ai/predict-plant", {
-			method: "POST",
-			body: formData,
-		});
-	} catch {
-		return {
-			plant_type: "lettuce",
-			confidence: 0.91,
-			timestamp: new Date().toISOString(),
-		};
-	}
+	return requestJson("/ai/predict-plant", {
+		method: "POST",
+		body: formData,
+	});
 }
 
 export async function getPlantProfile(plant) {
 	const key = normalizePlantKey(plant);
-	try {
-		const data = await requestJson(`/plant-profile/${encodeURIComponent(key)}`);
-		return data?.data || data;
-	} catch {
-		return {
-			plant: key,
-			target: MOCK_PLANT_DB[key] || MOCK_PLANT_DB.lettuce,
-		};
-	}
+	const data = await requestJson(`/plant-profile/${encodeURIComponent(key)}`);
+	return normalizePlantProfile(data?.data || data);
 }
 
 export async function sendDeviceCommand(command, value = "on") {
-	try {
-		return await requestJson("/device/control", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ command, value }),
-		});
-	} catch {
-		return {
-			status: "queued",
-			command,
-			value,
-			timestamp: new Date().toISOString(),
-		};
+	const isOn = String(value).toLowerCase().startsWith("on") ? 1 : 0;
+	const payload = { device_id: "esp32_1", led: 0, fan: 0 };
+
+	if (command === "fan") {
+		payload.fan = isOn;
+	} else {
+		// Backend hiện chỉ có led/fan. Tạm ánh xạ pump/light -> led.
+		payload.led = isOn;
 	}
+
+	return requestJson("/device/control", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload),
+	});
 }
 
 export async function getSystemStatus() {
-	try {
-		const data = await requestJson("/system/status");
-		return data?.data || data;
-	} catch {
-		return {
-			connectivity: "online",
-			ai_service: "ready",
-			pump: "idle",
-			fan: "idle",
-			last_update: new Date().toISOString(),
-		};
-	}
+	const data = await requestJson("/system/status");
+	const payload = data?.data || data;
+	return {
+		...payload,
+		last_update: normalizeUtcTimestamp(payload?.last_update || payload?.timestamp),
+	};
 }
 
 export function normalizePlantKey(plantName = "") {
@@ -145,7 +141,23 @@ function checkRange(value, range) {
 }
 
 export function buildIrrigationInsight(sensor, detection, profile) {
-	const target = profile?.target || MOCK_PLANT_DB[normalizePlantKey(detection?.plant_type)] || MOCK_PLANT_DB.lettuce;
+	const target = profile?.target;
+	if (!target) {
+		return {
+			target: {
+				temperature: { min: 0, max: 0 },
+				humidity: { min: 0, max: 0 },
+				soil_moisture: { min: 0, max: 0 },
+			},
+			status: { humidityStatus: "unknown", tempStatus: "unknown", soilStatus: "unknown" },
+			alerts: [{ severity: "info", text: "Chưa có profile cây từ backend để đưa ra so sánh ngưỡng." }],
+			recommendation: {
+				action: "Theo dõi",
+				durationSec: 0,
+				reason: `AI nhận diện: ${detection?.plant_type || "unknown"}`,
+			},
+		};
+	}
 	const humidityStatus = checkRange(sensor.humidity, target.humidity);
 	const tempStatus = checkRange(sensor.temperature, target.temperature);
 	const soilStatus = checkRange(sensor.soil_moisture, target.soil_moisture);

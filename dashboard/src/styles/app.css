@@ -232,6 +232,11 @@ body {
   margin-top: 12px;
   display: flex;
   gap: 10px;
+  align-items: center;
+}
+
+.upload-box button {
+  white-space: nowrap;
 }
 
 .helper-text {
@@ -239,6 +244,11 @@ body {
   color: var(--muted);
   font-size: 0.88rem;
   line-height: 1.45;
+}
+
+.detect-error {
+  color: var(--danger);
+  font-weight: 600;
 }
 
 input[type="file"] {
@@ -415,6 +425,11 @@ button:disabled {
   .device-panel,
   .history-panel {
     grid-column: span 12;
+  }
+
+  .upload-box {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 

@@ -13,6 +13,10 @@
 // backend/src/routes/ai.routes.js
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const aiController = require('../controllers/ai.controller');
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * AI integration routes
@@ -22,16 +26,8 @@ const router = express.Router();
  * - GET /ai/history
  */
 
-// POST /api/ai/predict-plant
-router.post('/ai/predict-plant', (req, res) => {
-    // TODO: Implement AI prediction
-    res.json({ message: 'AI prediction endpoint - to be implemented' });
-});
+router.post('/ai/predict-plant', upload.single('file'), aiController.predictPlant);
 
-// GET /api/ai/history
-router.get('/ai/history', (req, res) => {
-    // TODO: Implement AI history
-    res.json({ message: 'AI history endpoint - to be implemented' });
-});
+router.get('/ai/history', aiController.getHistory);
 
 module.exports = router;

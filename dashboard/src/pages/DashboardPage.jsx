@@ -15,14 +15,20 @@ function formatDateTime(timestamp) {
   if (!timestamp) return "N/A";
   try {
     const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return "N/A";
+
+    const tz = "Asia/Ho_Chi_Minh";
     const datePart = new Intl.DateTimeFormat("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      timeZone: tz,
     }).format(date);
     const timePart = new Intl.DateTimeFormat("vi-VN", {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
+      timeZone: tz,
     }).format(date);
     return `${datePart} ${timePart}`;
   } catch {
@@ -37,7 +43,7 @@ function TrendBars({ history }) {
     <div className="trend-bars">
       {items.map((item) => (
         <div key={item.timestamp} className="trend-item" title={`${item.temperature} C`}>
-          <div className="trend-label">{new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+          <div className="trend-label">{formatDateTime(item.timestamp).split(" ")[1] || "N/A"}</div>
           <div className="trend-col">
             <span className="trend-temp">{item.temperature.toFixed(1)} C</span>
             <div className="trend-fill" style={{ height: `${(item.temperature / maxTemp) * 100}%` }} />
@@ -60,7 +66,8 @@ export function DashboardPage() {
   const [cameraFile, setCameraFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [toast, setToast] = useState("");
-  const [autoDetecting, setAutoDetecting] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [detectError, setDetectError] = useState("");
 
   const latestDetection = detection || aiHistory[0] || null;
 
@@ -75,7 +82,11 @@ export function DashboardPage() {
     const activeDetection = detection || aiItems[0];
     let profile = null;
     if (activeDetection?.plant_type) {
-      profile = await getPlantProfile(activeDetection.plant_type);
+      try {
+        profile = await getPlantProfile(activeDetection.plant_type);
+      } catch {
+        profile = null;
+      }
     }
 
     setSensorLatest(latest);
@@ -106,39 +117,53 @@ export function DashboardPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!cameraFile) return;
-
-    let active = true;
-    async function runDetectionInBackground() {
-      setAutoDetecting(true);
-      try {
-        const result = await predictPlant(cameraFile);
-        if (!active) return;
-        setDetection(result);
-        const profile = await getPlantProfile(result.plant_type);
-        if (!active) return;
-        setPlantProfile(profile);
-        setAiHistory((prev) => [result, ...prev].slice(0, 10));
-        setToast("AI nhận diện cây trồng từ camera và cập nhật đề xuất.");
-      } catch {
-        if (!active) return;
-        setToast("Không thể nhận diện ảnh camera lúc này.");
-      } finally {
-        if (active) setAutoDetecting(false);
-      }
-    }
-
-    runDetectionInBackground();
-    return () => {
-      active = false;
-    };
-  }, [cameraFile]);
-
   const insight = useMemo(() => {
     if (!sensorLatest || !latestDetection) return null;
     return buildIrrigationInsight(sensorLatest, latestDetection, plantProfile);
   }, [sensorLatest, latestDetection, plantProfile]);
+
+  function handleImageSelect(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setCameraFile(file);
+    setDetectError("");
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
+  }
+
+  async function handleDetectFromUpload() {
+    if (!cameraFile) {
+      setDetectError("Vui lòng chọn ảnh trước khi nhận diện.");
+      return;
+    }
+
+    setDetectError("");
+    setDetecting(true);
+    try {
+      const result = await predictPlant(cameraFile);
+      setDetection(result);
+      setAiHistory((prev) => [result, ...prev].slice(0, 10));
+      setToast("Đã nhận diện cây trồng từ ảnh upload.");
+
+      try {
+        const profile = await getPlantProfile(result.plant_type);
+        setPlantProfile(profile);
+      } catch {
+        setPlantProfile(null);
+        setToast(`Đã nhận diện: ${result.plant_type}, nhưng chưa có plant profile trong database.`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message) {
+        setDetectError(`Nhận diện thất bại: ${message}`);
+      } else {
+        setDetectError("Không thể nhận diện ảnh lúc này. Hãy thử lại sau.");
+      }
+    } finally {
+      setDetecting(false);
+    }
+  }
 
   async function handleQuickWatering() {
     if (!insight?.recommendation?.durationSec) {
@@ -281,19 +306,16 @@ export function DashboardPage() {
             <input
               type="file"
               accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                setCameraFile(file);
-                if (previewUrl) URL.revokeObjectURL(previewUrl);
-                setPreviewUrl(URL.createObjectURL(file));
-              }}
+              onChange={handleImageSelect}
             />
+            <button type="button" disabled={detecting || !cameraFile} onClick={handleDetectFromUpload}>
+              {detecting ? "Đang nhận diện..." : "Nhận diện cây trồng"}
+            </button>
           </div>
           <p className="helper-text">
-            AI tự động cập nhật theo cây trồng từ ảnh camera được cập nhật. Kết quả dùng để nhận biết cây đang trồng và sinh đề xuất tưới.
+            Chọn ảnh từ camera hoặc thư viện, sau đó bấm nút nhận diện để AI phân loại cây trồng.
           </p>
-          {autoDetecting ? <p className="helper-text">Đang nhận diện ảnh ngầm...</p> : null}
+          {detectError ? <p className="helper-text detect-error">{detectError}</p> : null}
           {previewUrl ? <img className="preview" src={previewUrl} alt="Xem trước ảnh camera" /> : null}
           {latestDetection ? (
             <div className="detect-result">

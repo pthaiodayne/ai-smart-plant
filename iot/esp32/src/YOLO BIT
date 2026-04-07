@@ -1,7 +1,4 @@
 from yolobit import *
-button_a.on_pressed = None
-button_b.on_pressed = None
-button_a.on_pressed_ab = button_b.on_pressed_ab = -1
 from mqtt import *
 from machine import RTC
 import ntptime
@@ -11,89 +8,111 @@ from event_manager import *
 from machine import Pin, SoftI2C
 from aiot_dht20 import DHT20
 
+# Disable buttons
+button_a.on_pressed = None
+button_b.on_pressed = None
+button_a.on_pressed_ab = button_b.on_pressed_ab = -1
+
+# Init devices
 aiot_lcd1602 = LCD1602()
+aiot_dht20 = DHT20()
 
 event_manager.reset()
 
-def on_mqtt_message_receive_callback__V10_(th_C3_B4ng_tin):
+# ================= MQTT CALLBACK =================
+def on_mqtt_message_receive_callback__V10_(data):
   global RT, RH, SM, LUX
+  if data == '1':
+    pin10.write_analog(round(translate(70, 0, 100, 0, 1023)))
+  else:
+    pin10.write_analog(round(translate(0, 0, 100, 0, 1023)))
+
+def on_mqtt_message_receive_callback__V11_(data):
   pass
 
-def on_mqtt_message_receive_callback__V11_(th_C3_B4ng_tin):
-  global RT, RH, SM, LUX
-  pass
-
-# Mô tả hàm này...
-def _C4_90_C4_83ng_k_C3_AD_sever():
-  global th_C3_B4ng_tin, RT, RH, SM, LUX, aiot_dht20, aiot_lcd1602
+# Register MQTT topics
+def register_mqtt():
   mqtt.on_receive_message('V10', on_mqtt_message_receive_callback__V10_)
   mqtt.on_receive_message('V11', on_mqtt_message_receive_callback__V11_)
 
-aiot_dht20 = DHT20()
+# ================= SENSOR + LCD =================
+def read_and_display():
+  global RT, RH, SM, LUX
 
-def on_event_timer_callback_q_O_M_i_E():
-  global th_C3_B4ng_tin, RT, RH, SM, LUX
   aiot_dht20.read_dht20()
   RT = aiot_dht20.dht20_temperature()
   RH = aiot_dht20.dht20_humidity()
-  SM = round(translate((pin1.read_analog()), 0, 4095, 0, 100))
-  LUX = round(translate((pin2.read_analog()), 0, 4095, 0, 100))
+  SM = round(translate(pin1.read_analog(), 0, 4095, 0, 100))
+  LUX = round(translate(pin2.read_analog(), 0, 4095, 0, 100))
+
+  aiot_lcd1602.clear()
+
   aiot_lcd1602.move_to(0, 0)
-  aiot_lcd1602.putstr('RT:')
-  aiot_lcd1602.move_to(3, 0)
-  aiot_lcd1602.putstr(RT)
-  aiot_lcd1602.move_to(7, 0)
-  aiot_lcd1602.putstr('*C ')
+  aiot_lcd1602.putstr('RT:{}*C'.format(RT))
+
   aiot_lcd1602.move_to(10, 0)
-  aiot_lcd1602.putstr('RH:')
-  aiot_lcd1602.move_to(13, 0)
-  aiot_lcd1602.putstr(RH)
-  aiot_lcd1602.move_to(15, 0)
-  aiot_lcd1602.putstr('% ')
+  aiot_lcd1602.putstr('RH:{}%'.format(RH))
+
   aiot_lcd1602.move_to(0, 1)
-  aiot_lcd1602.putstr('LUX:')
-  aiot_lcd1602.move_to(4, 1)
-  aiot_lcd1602.putstr(LUX)
-  aiot_lcd1602.move_to(6, 1)
-  aiot_lcd1602.putstr('% ')
+  aiot_lcd1602.putstr('L:{}%'.format(LUX))
+
   aiot_lcd1602.move_to(9, 1)
-  aiot_lcd1602.putstr('SM:')
-  aiot_lcd1602.move_to(13, 1)
-  aiot_lcd1602.putstr(SM)
-  aiot_lcd1602.move_to(15, 1)
-  aiot_lcd1602.putstr('% ')
+  aiot_lcd1602.putstr('SM:{}%'.format(SM))
+
+  # Publish
   mqtt.publish('V1', RT)
   mqtt.publish('V2', RH)
   mqtt.publish('V3', SM)
   mqtt.publish('V4', LUX)
 
-event_manager.add_timer_event(30000, on_event_timer_callback_q_O_M_i_E)
+event_manager.add_timer_event(30000, read_and_display)
 
-def on_event_timer_callback_O_K_F_g_r():
-  global th_C3_B4ng_tin, RT, RH, SM, LUX
-  pass
+# ================= AUTO CONTROL =================
+def auto_control():
+  global SM
 
-event_manager.add_timer_event(30000, on_event_timer_callback_O_K_F_g_r)
+  hour = RTC().datetime()[4]
+  minute = RTC().datetime()[5]
 
-def on_event_timer_callback_t_J_D_Z_X():
-  global th_C3_B4ng_tin, RT, RH, SM, LUX
-  pass
+  # ⏰ Schedule ON
+  if hour == 19 and minute == 48:
+    pin10.write_analog(round(translate(70, 0, 100, 0, 1023)))
+    mqtt.publish('V10', '1')
 
-event_manager.add_timer_event(30000, on_event_timer_callback_t_J_D_Z_X)
+  # ⏰ Schedule OFF
+  if hour == 19 and minute == 50:
+    pin10.write_analog(round(translate(0, 0, 100, 0, 1023)))
+    mqtt.publish('V10', '0')
 
-if True:
-  display.scroll('DO AN')
-  mqtt.connect_wifi('HCMUT-MEETING', 'hcmut@meeting')
-  mqtt.connect_broker(server='mqtt.ohstem.vn', port=1883, username='DADN252', password='')
-  ntptime.settime()
-  (year, month, mday, week_of_year, hour, minute, second, milisecond) = RTC().datetime()
-  RTC().init((year, month, mday, week_of_year, hour+7, minute, second, milisecond))
-  aiot_lcd1602.clear()
-  _C4_90_C4_83ng_k_C3_AD_sever()
-  display.scroll('OK')
+  # 🌱 Soil moisture control
+  if SM < 10:
+    pin10.write_analog(round(translate(70, 0, 100, 0, 1023)))
+    mqtt.publish('V10', '1')
 
+  elif SM > 20:
+    pin10.write_analog(round(translate(0, 0, 100, 0, 1023)))
+    mqtt.publish('V10', '0')
+
+event_manager.add_timer_event(10000, auto_control)
+
+# ================= MAIN =================
+display.scroll('DO AN')
+
+mqtt.connect_wifi('HCMUT-MEETING', 'hcmut@meeting')
+mqtt.connect_broker(server='mqtt.ohstem.vn', port=1883, username='DADN252', password='')
+
+# Sync time
+ntptime.settime()
+(year, month, mday, wday, hour, minute, second, ms) = RTC().datetime()
+RTC().init((year, month, mday, wday, hour+7, minute, second, ms))
+
+aiot_lcd1602.clear()
+register_mqtt()
+
+display.scroll('OK')
+
+# ================= LOOP =================
 while True:
   mqtt.check_message()
   event_manager.run()
-  time.sleep_ms(1000)
-  time.sleep_ms(10)
+  time.sleep_ms(100)

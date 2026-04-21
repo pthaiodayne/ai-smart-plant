@@ -3,7 +3,7 @@ const db = require('../config/database');
 const sensorController = {
     // POST /api/sensor-data
     createSensorData: (req, res) => {
-        const { temperature, humidity, light, soil, auto_pump = 0, device_id = 'esp32_1' } = req.body;
+        const { temperature, humidity, light, soil, AUTO = 0, device_id = 'esp32_1' } = req.body;
 
         // Validate input
         if (!temperature || !humidity || !light) {

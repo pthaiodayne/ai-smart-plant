@@ -86,6 +86,21 @@ export async function getAiHistory() {
 	}));
 }
 
+export async function getAiLatest(options = {}) {
+	const params = new URLSearchParams();
+	if (options.source) params.set("source", options.source);
+	if (options.fallback != null) params.set("fallback", String(options.fallback));
+
+	const query = params.toString();
+	const data = await requestJson(`/ai/latest${query ? `?${query}` : ""}`);
+	const item = data?.item || data?.data || data;
+
+	return {
+		...item,
+		timestamp: normalizeUtcTimestamp(item?.timestamp),
+	};
+}
+
 export async function predictPlant(file) {
 	const formData = new FormData();
 	formData.append("file", file);
@@ -104,14 +119,7 @@ export async function getPlantProfile(plant) {
 
 export async function sendDeviceCommand(command, value = "on") {
 	const isOn = String(value).toLowerCase().startsWith("on") ? 1 : 0;
-	const payload = { device_id: "esp32_1", led: 0, fan: 0 };
-
-	if (command === "fan") {
-		payload.fan = isOn;
-	} else {
-		// Backend hiện chỉ có led/fan. Tạm ánh xạ pump/light -> led.
-		payload.led = isOn;
-	}
+	const payload = { device_id: "esp32_1", pump: isOn };
 
 	return requestJson("/device/control", {
 		method: "POST",

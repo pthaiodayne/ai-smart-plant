@@ -35,17 +35,24 @@ router.get('/system/status', (req, res) => {
             }
 
             // Get latest device command
-            db.get(`SELECT * FROM device_commands ORDER BY timestamp DESC LIMIT 1`, [], (err, deviceData) => {
+            db.get(`SELECT * FROM device_commands ORDER BY timestamp DESC, id DESC LIMIT 1`, [], (err, deviceCommandData) => {
                 if (err) {
                     return res.status(500).json({ error: 'Database error' });
                 }
 
-                res.json({
-                    status: 'online',
-                    timestamp: new Date(),
-                    sensor: sensorData || null,
-                    ai_detection: aiData || null,
-                    device_command: deviceData || null
+                db.get(`SELECT * FROM device_status ORDER BY timestamp DESC, id DESC LIMIT 1`, [], (statusErr, deviceStatusData) => {
+                    if (statusErr) {
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+
+                    res.json({
+                        status: 'online',
+                        timestamp: new Date(),
+                        sensor: sensorData || null,
+                        ai_detection: aiData || null,
+                        device_command: deviceCommandData || null,
+                        device_status: deviceStatusData || null
+                    });
                 });
             });
         });

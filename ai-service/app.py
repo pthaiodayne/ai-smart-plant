@@ -87,6 +87,13 @@ def _predict_plant(
     confidence = float(probs[pred_idx])
     timestamp = datetime.now(timezone.utc).isoformat()
 
+    if confidence < 0.5:
+        return {
+            "plant_type": "unknown",
+            "confidence": round(confidence, 4),
+            "timestamp": timestamp,
+        }
+    
     return {
         "plant_type": class_names[pred_idx],
         "confidence": round(confidence, 4),

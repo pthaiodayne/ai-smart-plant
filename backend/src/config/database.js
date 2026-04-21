@@ -16,6 +16,14 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 function initializeDatabase() {
     db.serialize(() => {
+        function ensureColumn(tableName, columnName, columnSql) {
+            db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnSql}`, (err) => {
+                if (err && !String(err.message || '').includes('duplicate column name')) {
+                    console.error(`Error adding column ${tableName}.${columnName}:`, err);
+                }
+            });
+        }
+
         // Sensor data table
         db.run(`CREATE TABLE IF NOT EXISTS sensor_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,16 +52,34 @@ function initializeDatabase() {
             plant TEXT,
             confidence REAL,
             image_path TEXT,
+            source TEXT DEFAULT 'dashboard',
+            device_id TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
+
+        ensureColumn('ai_detections', 'source', "TEXT DEFAULT 'dashboard'");
+        ensureColumn('ai_detections', 'device_id', 'TEXT');
 
         // Device commands table
         db.run(`CREATE TABLE IF NOT EXISTS device_commands (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             device_id TEXT DEFAULT 'esp32_1',
+            pump INTEGER DEFAULT 0,
             led INTEGER DEFAULT 0,
             fan INTEGER DEFAULT 0,
             acknowledged INTEGER DEFAULT 0,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        ensureColumn('device_commands', 'pump', 'INTEGER DEFAULT 0');
+
+        // Device status table
+        db.run(`CREATE TABLE IF NOT EXISTS device_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT DEFAULT 'esp32_1',
+            pump INTEGER DEFAULT 0,
+            online INTEGER DEFAULT 1,
+            note TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 

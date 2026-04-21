@@ -3,6 +3,7 @@ dist/
 build/
 .env
 .venv/
+.venv-mock/
 __pycache__/
 *.pyc
 .DS_Store
@@ -10,3 +11,4 @@ __pycache__/
 .vscode/
 .pio/
 data/
+captures/

@@ -44,9 +44,28 @@ This document is only used to record the approved APIs. It is not the final impl
 - Purpose: receive an image from the camera/dashboard and return the plant type.
 - Note: the upload format still needs to be agreed, such as `multipart/form-data` or base64.
 
+### `POST /ai/predict-plant/device`
+
+- Purpose: receive an image uploaded by an IoT camera device and return the plant type.
+- Upload format: `multipart/form-data`
+- Required fields:
+  - `file`
+  - `device_id`
+- Optional fields:
+  - `source`
+- Required header:
+  - `x-device-token`
+
 ### `GET /ai/history`
 
 - Purpose: plant detection history.
+
+### `GET /ai/latest`
+
+- Purpose: get the latest AI detection record, with priority for IoT camera source.
+- Optional query params:
+  - `source`: preferred source, default `iot-camera`
+  - `fallback`: when `true`, fallback to the latest record from any source if the preferred source has no data
 
 ## Plant Profile APIs
 
@@ -65,11 +84,37 @@ This document is only used to record the approved APIs. It is not the final impl
 
 ### `POST /device/control`
 
-- Purpose: dashboard sends device on/off commands.
+- Purpose: dashboard sends pump on/off commands.
+- Request body:
+
+```json
+{
+  "device_id": "esp32_1",
+  "pump": 1
+}
+```
 
 ### `GET /device/command`
 
-- Purpose: ESP32 pulls the latest control command.
+- Purpose: ESP32 pulls the latest pump command.
+
+### `POST /device/status`
+
+- Purpose: IoT device reports the actual pump status after applying the command.
+- Request body:
+
+```json
+{
+  "device_id": "esp32_1",
+  "pump": 1,
+  "online": 1,
+  "note": "pump relay on"
+}
+```
+
+### `GET /device/status`
+
+- Purpose: dashboard gets the latest actual pump status from the device.
 
 ## System APIs
 

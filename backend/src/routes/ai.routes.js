@@ -27,7 +27,9 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 
 router.post('/ai/predict-plant', upload.single('file'), aiController.predictPlant);
+router.post('/ai/predict-plant/device', upload.single('file'), aiController.predictPlantFromDevice);
 
+router.get('/ai/latest', aiController.getLatest);
 router.get('/ai/history', aiController.getHistory);
 
 module.exports = router;

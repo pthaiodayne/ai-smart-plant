@@ -1,6 +1,7 @@
 import React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  getAiLatest,
   buildIrrigationInsight,
   getAiHistory,
   getPlantProfile,
@@ -17,7 +18,7 @@ function formatDateTime(timestamp) {
     const date = new Date(timestamp);
     if (Number.isNaN(date.getTime())) return "N/A";
 
-    const tz = "Asia/Ho_Chi_Minh";
+    const tz = "Asia/Bangkok";
     const datePart = new Intl.DateTimeFormat("vi-VN", {
       day: "2-digit",
       month: "2-digit",
@@ -30,7 +31,7 @@ function formatDateTime(timestamp) {
       hour12: false,
       timeZone: tz,
     }).format(date);
-    return `${datePart} ${timePart}`;
+    return `${datePart} ${timePart} GMT+7`;
   } catch {
     return "N/A";
   }
@@ -68,18 +69,32 @@ export function DashboardPage() {
   const [toast, setToast] = useState("");
   const [detecting, setDetecting] = useState(false);
   const [detectError, setDetectError] = useState("");
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [autoCaptureEnabled, setAutoCaptureEnabled] = useState(false);
+  const [lastCaptureAt, setLastCaptureAt] = useState("");
+
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const autoCaptureIntervalRef = useRef(null);
+  const detectInFlightRef = useRef(false);
+  const previewUrlRef = useRef("");
 
   const latestDetection = detection || aiHistory[0] || null;
+  const pumpState = systemStatus?.device_status || systemStatus?.device_command || null;
+  const isPumpOn = Number(pumpState?.pump ?? pumpState?.led ?? 0) === 1;
 
   async function refreshData() {
-    const [latest, history, status, aiItems] = await Promise.all([
+    const [latest, history, status, aiItems, latestDeviceDetection] = await Promise.all([
       getSensorLatest(),
       getSensorHistory(),
       getSystemStatus(),
       getAiHistory(),
+      getAiLatest({ source: "iot-camera", fallback: true }).catch(() => null),
     ]);
 
-    const activeDetection = detection || aiItems[0];
+    const activeDetection = detection || latestDeviceDetection || aiItems[0];
     let profile = null;
     if (activeDetection?.plant_type) {
       try {
@@ -93,6 +108,9 @@ export function DashboardPage() {
     setSensorHistory(history);
     setSystemStatus(status);
     setAiHistory(aiItems);
+    if (!detection && latestDeviceDetection) {
+      setDetection(latestDeviceDetection);
+    }
     setPlantProfile(profile);
   }
 
@@ -113,38 +131,116 @@ export function DashboardPage() {
     return () => {
       mounted = false;
       clearInterval(intervalId);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      stopCameraStream();
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (autoCaptureIntervalRef.current) {
+        clearInterval(autoCaptureIntervalRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!cameraEnabled || !cameraReady || !autoCaptureEnabled) {
+      if (autoCaptureIntervalRef.current) {
+        clearInterval(autoCaptureIntervalRef.current);
+        autoCaptureIntervalRef.current = null;
+      }
+      return;
+    }
+
+    autoCaptureIntervalRef.current = setInterval(() => {
+      captureAndDetectFromCamera("auto").catch(() => undefined);
+    }, 30000);
+
+    return () => {
+      if (autoCaptureIntervalRef.current) {
+        clearInterval(autoCaptureIntervalRef.current);
+        autoCaptureIntervalRef.current = null;
+      }
+    };
+  }, [cameraEnabled, cameraReady, autoCaptureEnabled]);
 
   const insight = useMemo(() => {
     if (!sensorLatest || !latestDetection) return null;
     return buildIrrigationInsight(sensorLatest, latestDetection, plantProfile);
   }, [sensorLatest, latestDetection, plantProfile]);
 
-  function handleImageSelect(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  function stopCameraStream() {
+    if (autoCaptureIntervalRef.current) {
+      clearInterval(autoCaptureIntervalRef.current);
+      autoCaptureIntervalRef.current = null;
+    }
 
-    setCameraFile(file);
-    setDetectError("");
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(file));
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    setCameraEnabled(false);
+    setCameraReady(false);
+    setAutoCaptureEnabled(false);
   }
 
-  async function handleDetectFromUpload() {
-    if (!cameraFile) {
-      setDetectError("Vui lòng chọn ảnh trước khi nhận diện.");
+  async function startCameraStream() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setDetectError("Trình duyệt hiện tại không hỗ trợ truy cập camera.");
       return;
     }
 
     setDetectError("");
-    setDetecting(true);
+
     try {
-      const result = await predictPlant(cameraFile);
+      stopCameraStream();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+        },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      setCameraEnabled(true);
+      setCameraReady(true);
+      setToast("Camera đã sẵn sàng. Có thể bật nhận diện tự động mỗi 30 giây.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setCameraEnabled(false);
+      setCameraReady(false);
+      setAutoCaptureEnabled(false);
+      setDetectError(message ? `Không mở được camera: ${message}` : "Không thể truy cập camera.");
+    }
+  }
+
+  async function runPlantDetection(file, sourceLabel) {
+    setDetectError("");
+    setDetecting(true);
+    detectInFlightRef.current = true;
+
+    try {
+      const result = await predictPlant(file);
       setDetection(result);
       setAiHistory((prev) => [result, ...prev].slice(0, 10));
-      setToast("Đã nhận diện cây trồng từ ảnh upload.");
+      setToast(
+        sourceLabel === "camera"
+          ? "Đã nhận diện cây trồng từ camera."
+          : "Đã nhận diện cây trồng từ ảnh upload."
+      );
 
       try {
         const profile = await getPlantProfile(result.plant_type);
@@ -161,8 +257,94 @@ export function DashboardPage() {
         setDetectError("Không thể nhận diện ảnh lúc này. Hãy thử lại sau.");
       }
     } finally {
+      detectInFlightRef.current = false;
       setDetecting(false);
     }
+  }
+
+  async function captureFrameToFile() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    if (!video || !canvas || !cameraReady) {
+      throw new Error("Camera chưa sẵn sàng để chụp ảnh.");
+    }
+
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Không tạo được vùng vẽ ảnh từ camera.");
+    }
+
+    context.drawImage(video, 0, 0, width, height);
+
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (value) => {
+          if (!value) {
+            reject(new Error("Không lấy được ảnh từ camera."));
+            return;
+          }
+          resolve(value);
+        },
+        "image/jpeg",
+        0.92
+      );
+    });
+
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const nextPreviewUrl = URL.createObjectURL(blob);
+    previewUrlRef.current = nextPreviewUrl;
+    setPreviewUrl(nextPreviewUrl);
+    const capturedFile = new File([blob], `camera-capture-${Date.now()}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+    setCameraFile(capturedFile);
+
+    return capturedFile;
+  }
+
+  async function captureAndDetectFromCamera(mode = "manual") {
+    if (detectInFlightRef.current) return;
+
+    try {
+      const file = await captureFrameToFile();
+      setLastCaptureAt(new Date().toISOString());
+      await runPlantDetection(file, "camera");
+      if (mode === "auto") {
+        setToast("Đã tự động chụp từ camera và gửi AI nhận diện.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setDetectError(message || "Không thể chụp ảnh từ camera.");
+    }
+  }
+
+  function handleImageSelect(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setCameraFile(file);
+    setDetectError("");
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const nextPreviewUrl = URL.createObjectURL(file);
+    previewUrlRef.current = nextPreviewUrl;
+    setPreviewUrl(nextPreviewUrl);
+  }
+
+  async function handleDetectFromUpload() {
+    if (!cameraFile) {
+      setDetectError("Vui lòng chọn ảnh trước khi nhận diện.");
+      return;
+    }
+
+    await runPlantDetection(cameraFile, "upload");
   }
 
   async function handleQuickWatering() {
@@ -185,6 +367,15 @@ export function DashboardPage() {
     setBusy(true);
     try {
       await sendDeviceCommand(command, value);
+      const isOn = String(value).toLowerCase().startsWith("on") ? 1 : 0;
+      setSystemStatus((prev) => ({
+        ...(prev || {}),
+        device_command: {
+          ...(prev?.device_command || {}),
+          pump: command === "pump" ? isOn : Number(prev?.device_command?.pump || 0),
+          timestamp: new Date().toISOString(),
+        },
+      }));
       setToast(`Đã gửi lệnh ${command}: ${value}`);
     } catch {
       setToast("Không gửi được lệnh thiết bị.");
@@ -302,6 +493,46 @@ export function DashboardPage() {
             <span>{latestDetection ? `Độ tin cậy ${Math.round(latestDetection.confidence * 100)}%` : "Chưa có kết quả"}</span>
           </div>
 
+          <div className="camera-box">
+            <div className="camera-actions">
+              <button type="button" disabled={cameraEnabled} onClick={startCameraStream}>
+                Mở camera
+              </button>
+              <button type="button" disabled={!cameraEnabled} onClick={stopCameraStream}>
+                Tắt camera
+              </button>
+              <button
+                type="button"
+                disabled={!cameraReady || detecting}
+                onClick={() => captureAndDetectFromCamera("manual")}
+              >
+                {detecting ? "Đang nhận diện..." : "Chụp ngay"}
+              </button>
+            </div>
+
+            <label className="camera-toggle">
+              <input
+                type="checkbox"
+                checked={autoCaptureEnabled}
+                disabled={!cameraReady}
+                onChange={(event) => setAutoCaptureEnabled(event.target.checked)}
+              />
+              <span>Tự động capture mỗi 30 giây và gửi cho AI</span>
+            </label>
+
+            <div className="camera-stream">
+              <video
+                ref={videoRef}
+                className="camera-preview"
+                autoPlay
+                playsInline
+                muted
+              />
+              {!cameraEnabled ? <div className="camera-placeholder">Camera chưa bật</div> : null}
+            </div>
+            <canvas ref={canvasRef} hidden />
+          </div>
+
           <div className="upload-box">
             <input
               type="file"
@@ -313,8 +544,14 @@ export function DashboardPage() {
             </button>
           </div>
           <p className="helper-text">
-            Chọn ảnh từ camera hoặc thư viện, sau đó bấm nút nhận diện để AI phân loại cây trồng.
+            Có thể mở camera để chụp trực tiếp, bật chế độ tự động 30 giây/lần, hoặc chọn ảnh thủ công từ thiết bị.
           </p>
+          {cameraEnabled ? (
+            <p className="helper-text">
+              Trạng thái camera: {autoCaptureEnabled ? "đang tự động nhận diện mỗi 30 giây" : "đang mở"}
+              {lastCaptureAt ? ` | Lần chụp gần nhất: ${formatDateTime(lastCaptureAt)}` : ""}
+            </p>
+          ) : null}
           {detectError ? <p className="helper-text detect-error">{detectError}</p> : null}
           {previewUrl ? <img className="preview" src={previewUrl} alt="Xem trước ảnh camera" /> : null}
           {latestDetection ? (
@@ -327,16 +564,17 @@ export function DashboardPage() {
 
         <article className="panel device-panel">
           <div className="panel-head">
-            <h2>Điều khiển thiết bị từ xa</h2>
-            <span>Pump, Fan, Grow Light</span>
+            <h2>Điều khiển máy bơm từ xa</h2>
+            <span>Thiết bị tưới</span>
           </div>
-          <div className="device-grid">
+          <div className={`pump-status-card ${isPumpOn ? "on" : "off"}`}>
+            <span className="pump-status-label">Trạng thái máy bơm</span>
+            <strong>{isPumpOn ? "Đang bật" : "Đang tắt"}</strong>
+            <small>Cập nhật: {formatDateTime(pumpState?.timestamp || systemStatus?.last_update)}</small>
+          </div>
+          <div className="device-grid pump-grid">
             <button type="button" disabled={busy} onClick={() => handleDeviceControl("pump", "on")}>Bật bơm</button>
             <button type="button" disabled={busy} onClick={() => handleDeviceControl("pump", "off")}>Tắt bơm</button>
-            <button type="button" disabled={busy} onClick={() => handleDeviceControl("fan", "on")}>Bật quạt</button>
-            <button type="button" disabled={busy} onClick={() => handleDeviceControl("fan", "off")}>Tắt quạt</button>
-            <button type="button" disabled={busy} onClick={() => handleDeviceControl("light", "on")}>Bật đèn</button>
-            <button type="button" disabled={busy} onClick={() => handleDeviceControl("light", "off")}>Tắt đèn</button>
           </div>
         </article>
 

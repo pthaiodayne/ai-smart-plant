@@ -3,17 +3,17 @@ const db = require('../config/database');
 const sensorController = {
     // POST /api/sensor-data
     createSensorData: (req, res) => {
-        const { temperature, humidity, light, device_id = 'esp32_1' } = req.body;
+        const { temperature, humidity, light, soil, AUTO = 0, device_id = 'esp32_1' } = req.body;
 
         // Validate input
         if (!temperature || !humidity || !light) {
-            return res.status(400).json({ error: 'Missing required fields' });
+            return res.status(400).json({ error: 'Missing required fields: temperature, humidity, light' });
         }
 
-        const query = `INSERT INTO sensor_data (temperature, humidity, light, device_id) 
-                       VALUES (?, ?, ?, ?)`;
+        const query = `INSERT INTO sensor_data (temperature, humidity, light, soil, auto_pump, device_id) 
+                       VALUES (?, ?, ?, ?, ?, ?)`;
 
-        db.run(query, [temperature, humidity, light, device_id], function (err) {
+        db.run(query, [temperature, humidity, light, soil, auto_pump, device_id], function (err) {
             if (err) {
                 console.error('Error inserting sensor data:', err);
                 return res.status(500).json({ error: 'Database error' });
@@ -21,6 +21,7 @@ const sensorController = {
 
             res.status(201).json({
                 id: this.lastID,
+                data: { temperature, humidity, light, soil, auto_pump, device_id },
                 message: 'Sensor data saved successfully'
             });
         });

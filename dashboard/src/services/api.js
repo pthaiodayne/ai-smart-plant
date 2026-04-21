@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const DEVICE_ID = "YOLOBIT01";
 
 function normalizeUtcTimestamp(value) {
 	if (!value) return new Date().toISOString();
@@ -40,10 +41,10 @@ function normalizeSensor(raw = {}) {
 	return {
 		temperature: Number(raw.temperature ?? raw.temp ?? 0),
 		humidity: Number(raw.humidity ?? 0),
-		// Backend hiện lưu trường `light`; tạm ánh xạ để giữ luồng hiển thị hiện tại của dashboard.
-		soil_moisture: Number(raw.soil_moisture ?? raw.soilMoisture ?? raw.light ?? 0),
+		light: Number(raw.light ?? 0),
+		soil_moisture: Number(raw.soil_moisture ?? raw.soilMoisture ?? raw.soil ?? 0),
 		timestamp: normalizeUtcTimestamp(raw.timestamp),
-		device_id: raw.device_id || raw.deviceId || "esp32_01",
+		device_id: raw.device_id || raw.deviceId || DEVICE_ID,
 	};
 }
 
@@ -52,6 +53,8 @@ function normalizePlantProfile(raw = {}) {
 	const tempMax = Number(raw.temperature_max);
 	const humidityMin = Number(raw.humidity_min);
 	const humidityMax = Number(raw.humidity_max);
+	const soilMin = Number(raw.soil_min);
+	const soilMax = Number(raw.soil_max);
 	const lightMin = Number(raw.light_min);
 	const lightMax = Number(raw.light_max);
 
@@ -60,19 +63,22 @@ function normalizePlantProfile(raw = {}) {
 		target: {
 			temperature: { min: Number.isFinite(tempMin) ? tempMin : 0, max: Number.isFinite(tempMax) ? tempMax : 0 },
 			humidity: { min: Number.isFinite(humidityMin) ? humidityMin : 0, max: Number.isFinite(humidityMax) ? humidityMax : 0 },
-			// Dashboard hiện dùng soil_moisture để so sánh; backend đang có light range.
-			soil_moisture: { min: Number.isFinite(lightMin) ? lightMin : 0, max: Number.isFinite(lightMax) ? lightMax : 0 },
+			soil_moisture: {
+				min: Number.isFinite(soilMin) ? soilMin : 0,
+				max: Number.isFinite(soilMax) ? soilMax : 0,
+			},
+			light: { min: Number.isFinite(lightMin) ? lightMin : 0, max: Number.isFinite(lightMax) ? lightMax : 0 },
 		},
 	};
 }
 
 export async function getSensorLatest() {
-	const data = await requestJson("/sensor/latest");
+	const data = await requestJson(`/sensor/latest?device_id=${encodeURIComponent(DEVICE_ID)}`);
 	return normalizeSensor(data?.data || data);
 }
 
 export async function getSensorHistory() {
-	const data = await requestJson("/sensor/history?limit=20");
+	const data = await requestJson(`/sensor/history?limit=20&device_id=${encodeURIComponent(DEVICE_ID)}`);
 	const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
 	return items.map(normalizeSensor);
 }
@@ -119,7 +125,7 @@ export async function getPlantProfile(plant) {
 
 export async function sendDeviceCommand(command, value = "on") {
 	const isOn = String(value).toLowerCase().startsWith("on") ? 1 : 0;
-	const payload = { device_id: "esp32_1", pump: isOn };
+	const payload = { device_id: DEVICE_ID, pump: isOn };
 
 	return requestJson("/device/control", {
 		method: "POST",
@@ -129,7 +135,7 @@ export async function sendDeviceCommand(command, value = "on") {
 }
 
 export async function getSystemStatus() {
-	const data = await requestJson("/system/status");
+	const data = await requestJson(`/system/status?device_id=${encodeURIComponent(DEVICE_ID)}`);
 	const payload = data?.data || data;
 	return {
 		...payload,

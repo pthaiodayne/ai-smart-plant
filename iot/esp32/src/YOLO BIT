@@ -2,113 +2,156 @@ from yolobit import *
 button_a.on_pressed = None
 button_b.on_pressed = None
 button_a.on_pressed_ab = button_b.on_pressed_ab = -1
+
 from mqtt import *
 from machine import RTC
 import ntptime
 import time
 from aiot_lcd1602 import LCD1602
 from event_manager import *
-from machine import Pin, SoftI2C
 from aiot_dht20 import DHT20
+import urequests
+import gc
 
+# =========================
+# KHỞI TẠO
+# =========================
 aiot_lcd1602 = LCD1602()
-
+aiot_dht20 = DHT20()
 event_manager.reset()
 
-def on_mqtt_message_receive_callback__V10_(th_C3_B4ng_tin):
-  global Gi_E1_BB_9D, RT, Ph_C3_BAt, RH, SM, LUX
-  if th_C3_B4ng_tin == '1':
-    pin10.write_analog(round(translate(70, 0, 100, 0, 1023)))
-  if th_C3_B4ng_tin == '0':
-    pin10.write_analog(round(translate(0, 0, 100, 0, 1023)))
+PUMP = '0'
+json_data = ''
 
-def on_mqtt_message_receive_callback__V11_(th_C3_B4ng_tin):
-  global Gi_E1_BB_9D, RT, Ph_C3_BAt, RH, SM, LUX
-  pass
+# =========================
+# ĐIỀU KHIỂN PUMP MQTT
+# =========================
+def on_mqtt_message_receive_callback__V10_(msg):
+  global PUMP
 
-# Mô tả hàm này...
-def _C4_90_C4_83ng_k_C3_AD_server():
-  global th_C3_B4ng_tin, Gi_E1_BB_9D, RT, Ph_C3_BAt, RH, SM, LUX, aiot_dht20, aiot_lcd1602
+  if msg == '1':
+    PUMP = '1'
+    pin10.write_analog(round(translate(70,0,100,0,1023)))
+
+  if msg == '0':
+    PUMP = '0'
+    pin10.write_analog(0)
+
+# =========================
+# ĐIỀU KHIỂN PUMP WEB
+# =========================
+def on_event_timer_callback_WEB():
+  global PUMP
+
+  try:
+    res = urequests.get('http://your_ipv4:3000/device/command?device_id=YOLOBIT01')
+    cmd = res.json()
+
+    if 'pump' in cmd:
+      if str(cmd['pump']) == '1':
+        PUMP = '1'
+        pin10.write_analog(round(translate(70,0,100,0,1023)))
+        mqtt.publish('V10','1')
+
+      if str(cmd['pump']) == '0':
+        PUMP = '0'
+        pin10.write_analog(0)
+        mqtt.publish('V10','0')
+
+    gc.collect()
+
+  except:
+    pass
+
+event_manager.add_timer_event(3000, on_event_timer_callback_WEB)
+
+# =========================
+# ĐĂNG KÝ MQTT
+# =========================
+def dang_ky_server():
   mqtt.on_receive_message('V10', on_mqtt_message_receive_callback__V10_)
-  mqtt.on_receive_message('V11', on_mqtt_message_receive_callback__V11_)
 
-aiot_dht20 = DHT20()
+# =========================
+# GỬI SENSOR DATA
+# =========================
+def on_event_timer_callback_sensor():
+  global json_data, PUMP
 
-def on_event_timer_callback_j_u_i_D_c():
-  global th_C3_B4ng_tin, Gi_E1_BB_9D, RT, Ph_C3_BAt, RH, SM, LUX
   aiot_dht20.read_dht20()
+
   RT = aiot_dht20.dht20_temperature()
   RH = aiot_dht20.dht20_humidity()
-  SM = round(translate((pin1.read_analog()), 0, 4095, 0, 100))
-  LUX = round(translate((pin2.read_analog()), 0, 4095, 0, 100))
-  aiot_lcd1602.move_to(0, 0)
-  aiot_lcd1602.putstr('RT:')
-  aiot_lcd1602.move_to(3, 0)
-  aiot_lcd1602.putstr(RT)
-  aiot_lcd1602.move_to(7, 0)
-  aiot_lcd1602.putstr('*C')
-  aiot_lcd1602.move_to(10, 0)
-  aiot_lcd1602.putstr('RH:')
-  aiot_lcd1602.move_to(13, 0)
-  aiot_lcd1602.putstr(RH)
-  aiot_lcd1602.move_to(15, 0)
-  aiot_lcd1602.putstr('%')
-  aiot_lcd1602.move_to(0, 1)
-  aiot_lcd1602.putstr('LUX:')
-  aiot_lcd1602.move_to(4, 1)
-  aiot_lcd1602.putstr(LUX)
-  aiot_lcd1602.move_to(6, 1)
-  aiot_lcd1602.putstr('%  ')
-  aiot_lcd1602.move_to(9, 1)
-  aiot_lcd1602.putstr('SM:')
-  aiot_lcd1602.move_to(13, 1)
-  aiot_lcd1602.putstr(SM)
-  aiot_lcd1602.move_to(15, 1)
-  aiot_lcd1602.putstr('%')
+  SM = round(translate(pin1.read_analog(),0,4095,0,100))
+  LUX = round(translate(pin2.read_analog(),0,4095,0,100))
+
+  # LCD
+  aiot_lcd1602.clear()
+  aiot_lcd1602.move_to(0,0)
+  aiot_lcd1602.putstr('T:' + str(RT))
+  aiot_lcd1602.move_to(8,0)
+  aiot_lcd1602.putstr('H:' + str(RH))
+
+  aiot_lcd1602.move_to(0,1)
+  aiot_lcd1602.putstr('S:' + str(SM))
+  aiot_lcd1602.move_to(8,1)
+  aiot_lcd1602.putstr('L:' + str(LUX))
+
+  # MQTT dashboard
   mqtt.publish('V1', RT)
   mqtt.publish('V2', RH)
   mqtt.publish('V3', SM)
   mqtt.publish('V4', LUX)
+  mqtt.publish('V10', PUMP)
 
-event_manager.add_timer_event(30000, on_event_timer_callback_j_u_i_D_c)
+  # JSON gửi backend
+  json_data = {
+    "temperature": RT,
+    "humidity": RH,
+    "light": LUX,
+    "soil": SM,
+    "pump": PUMP,
+    "device_id": "YOLOBIT01"
+  }
 
-def on_event_timer_callback_d_g_d_I_z():
-  global th_C3_B4ng_tin, Gi_E1_BB_9D, RT, Ph_C3_BAt, RH, SM, LUX
-  if (round(translate((pin1.read_analog()), 0, 4095, 0, 100))) < 10:
-    pin10.write_analog(round(translate(70, 0, 100, 0, 1023)))
-    mqtt.publish('V10', '1')
-  if (round(translate((pin1.read_analog()), 0, 4095, 0, 100))) > 20:
-    pin10.write_analog(round(translate(0, 0, 100, 0, 1023)))
-    mqtt.publish('V10', '0')
+  try:
+    gc.collect()
+    urequests.post(
+      'http://your_ipv4:3000/sensor-data',
+      json=json_data,
+      headers={"Content-Type":"application/json"}
+    )
+  except:
+    pass
 
-event_manager.add_timer_event(2000, on_event_timer_callback_d_g_d_I_z)
+event_manager.add_timer_event(10000, on_event_timer_callback_sensor)
 
-def on_event_timer_callback_U_o_v_T_m():
-  global th_C3_B4ng_tin, Gi_E1_BB_9D, RT, Ph_C3_BAt, RH, SM, LUX
-  Gi_E1_BB_9D = int(('%0*d' % (2, RTC().datetime()[4])))
-  Ph_C3_BAt = int(('%0*d' % (2, RTC().datetime()[5])))
-  if Gi_E1_BB_9D == 19 and Ph_C3_BAt == 48:
-    pin10.write_analog(round(translate(70, 0, 100, 0, 1023)))
-    mqtt.publish('V10', '1')
-  if Gi_E1_BB_9D == 19 and Ph_C3_BAt == 50:
-    pin10.write_analog(round(translate(0, 0, 100, 0, 1023)))
-    mqtt.publish('V10', '0')
+# =========================
+# MAIN
+# =========================
+display.scroll('DO AN')
 
-event_manager.add_timer_event(10000, on_event_timer_callback_U_o_v_T_m)
+mqtt.connect_wifi('HCMUT-MEETING', 'hcmut@meeting')
+mqtt.connect_broker(
+  server='mqtt.ohstem.vn',
+port=1883,
+  username='DADN252',
+  password=''
+)
 
-if True:
-  display.scroll('DO AN')
-  mqtt.connect_wifi('HCMUT-MEETING', 'hcmut@meeting')
-  mqtt.connect_broker(server='mqtt.ohstem.vn', port=1883, username='DADN252', password='')
-  ntptime.settime()
-  (year, month, mday, week_of_year, hour, minute, second, milisecond) = RTC().datetime()
-  RTC().init((year, month, mday, week_of_year, hour+7, minute, second, milisecond))
-  aiot_lcd1602.clear()
-  _C4_90_C4_83ng_k_C3_AD_server()
-  display.scroll('OK')
+ntptime.settime()
 
+(year, month, mday, week, hour, minute, second, ms) = RTC().datetime()
+RTC().init((year, month, mday, week, hour+7, minute, second, ms))
+
+dang_ky_server()
+
+aiot_lcd1602.clear()
+display.scroll('OK')
+
+# =========================
+# LOOP
+# =========================
 while True:
   mqtt.check_message()
   event_manager.run()
   time.sleep_ms(1000)
-  time.sleep_ms(10)

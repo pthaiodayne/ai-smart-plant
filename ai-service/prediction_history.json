@@ -1,0 +1,232 @@
+[
+  {
+    "plant_type": "unknown",
+    "confidence": 0.2405,
+    "timestamp": "2026-04-21T05:34:38.992879+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:35:06.427735+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:35:21.227501+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:35:36.363997+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:35:51.484594+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:36:06.365542+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:36:21.381071+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:36:36.235564+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:41:30.565005+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.3728,
+    "timestamp": "2026-04-21T05:41:44.509351+00:00"
+  },
+  {
+    "plant_type": "apple",
+    "confidence": 0.5912,
+    "timestamp": "2026-04-21T05:41:59.467008+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.4076,
+    "timestamp": "2026-04-21T05:42:14.466600+00:00"
+  },
+  {
+    "plant_type": "apple",
+    "confidence": 0.7687,
+    "timestamp": "2026-04-21T05:42:29.471264+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.425,
+    "timestamp": "2026-04-21T05:43:16.537973+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.8303,
+    "timestamp": "2026-04-21T05:43:42.461821+00:00"
+  },
+  {
+    "plant_type": "apple",
+    "confidence": 0.631,
+    "timestamp": "2026-04-21T05:43:54.493179+00:00"
+  },
+  {
+    "plant_type": "apple",
+    "confidence": 0.8453,
+    "timestamp": "2026-04-21T05:44:03.563682+00:00"
+  },
+  {
+    "plant_type": "apple",
+    "confidence": 0.8184,
+    "timestamp": "2026-04-21T05:44:08.120436+00:00"
+  },
+  {
+    "plant_type": "apple",
+    "confidence": 0.5198,
+    "timestamp": "2026-04-21T05:44:12.210845+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.6561,
+    "timestamp": "2026-04-21T05:45:30.117635+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.6961,
+    "timestamp": "2026-04-21T05:45:34.315779+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.7167,
+    "timestamp": "2026-04-21T05:45:51.224694+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.6068,
+    "timestamp": "2026-04-21T05:45:53.694549+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.4012,
+    "timestamp": "2026-04-21T05:45:57.006263+00:00"
+  },
+  {
+    "plant_type": "apple",
+    "confidence": 0.5157,
+    "timestamp": "2026-04-21T05:45:59.601126+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.4188,
+    "timestamp": "2026-04-21T05:46:02.103135+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.2881,
+    "timestamp": "2026-04-21T05:46:03.672586+00:00"
+  },
+  {
+    "plant_type": "apple",
+    "confidence": 0.61,
+    "timestamp": "2026-04-21T05:46:05.393189+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.4115,
+    "timestamp": "2026-04-21T05:46:07.569439+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.6309,
+    "timestamp": "2026-04-21T05:46:09.138638+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.5557,
+    "timestamp": "2026-04-21T05:46:11.599151+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.7813,
+    "timestamp": "2026-04-21T05:46:13.422436+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.8151,
+    "timestamp": "2026-04-21T05:46:26.178466+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.978,
+    "timestamp": "2026-04-21T05:46:59.227262+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.9759,
+    "timestamp": "2026-04-21T05:47:03.679345+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.989,
+    "timestamp": "2026-04-21T05:47:06.811948+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.988,
+    "timestamp": "2026-04-21T05:47:12.023285+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.9919,
+    "timestamp": "2026-04-21T05:47:14.149448+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.9617,
+    "timestamp": "2026-04-21T05:47:17.422678+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.0817,
+    "timestamp": "2026-04-21T05:50:00.644919+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.2124,
+    "timestamp": "2026-04-21T05:50:09.606578+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.6062,
+    "timestamp": "2026-04-21T05:50:19.615588+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.518,
+    "timestamp": "2026-04-21T05:50:29.615879+00:00"
+  },
+  {
+    "plant_type": "tomato",
+    "confidence": 0.5473,
+    "timestamp": "2026-04-21T05:50:39.815596+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.3245,
+    "timestamp": "2026-04-21T05:50:49.565728+00:00"
+  },
+  {
+    "plant_type": "unknown",
+    "confidence": 0.2154,
+    "timestamp": "2026-04-21T05:50:59.832871+00:00"
+  }
+]

@@ -55,6 +55,11 @@ function TrendBars({ history }) {
   );
 }
 
+function formatMetric(value, digits = 1) {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? numeric.toFixed(digits) : "0.0";
+}
+
 export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -408,17 +413,22 @@ export function DashboardPage() {
       <section className="metrics-grid">
         <article className="metric-card temp">
           <h3>Nhiệt độ</h3>
-          <p>{sensorLatest?.temperature?.toFixed(1)} C</p>
+          <p>{formatMetric(sensorLatest?.temperature)} C</p>
           <small>Thiết bị: {sensorLatest?.device_id}</small>
         </article>
         <article className="metric-card humidity">
           <h3>Độ ẩm không khí</h3>
-          <p>{sensorLatest?.humidity?.toFixed(1)} %</p>
+          <p>{formatMetric(sensorLatest?.humidity)} %</p>
           <small>Cập nhật: {formatDateTime(sensorLatest?.timestamp)}</small>
         </article>
         <article className="metric-card soil">
+          <h3>Ánh sáng</h3>
+          <p>{formatMetric(sensorLatest?.light)} %</p>
+          <small>Cường độ ánh sáng hiện tại</small>
+        </article>
+        <article className="metric-card soil">
           <h3>Độ ẩm đất</h3>
-          <p>{sensorLatest?.soil_moisture?.toFixed(1)} %</p>
+          <p>{formatMetric(sensorLatest?.soil_moisture)} %</p>
           <small>Ngưỡng theo cây từ dữ liệu cung cấp</small>
         </article>
       </section>
@@ -451,13 +461,6 @@ export function DashboardPage() {
                   {sensorLatest.humidity.toFixed(1)} % / [{insight.target.humidity.min}-{insight.target.humidity.max}] %
                 </span>
                 <strong className={`state ${insight.status.humidityStatus}`}>{insight.status.humidityStatus}</strong>
-              </div>
-              <div className="row">
-                <span>Độ ẩm đất</span>
-                <span>
-                  {sensorLatest.soil_moisture.toFixed(1)} % / [{insight.target.soil_moisture.min}-{insight.target.soil_moisture.max}] %
-                </span>
-                <strong className={`state ${insight.status.soilStatus}`}>{insight.status.soilStatus}</strong>
               </div>
             </div>
           ) : (

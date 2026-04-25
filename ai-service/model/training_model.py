@@ -1,3 +1,4 @@
+#this is jusst a version training code translate from the original notebook, it is not used in the service, but can be used to retrain the model if needed.
 import os
 import json
 import tensorflow as tf
